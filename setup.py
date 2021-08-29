@@ -1,5 +1,5 @@
 from requests import Session
-import monster, json, time, re
+import monster, json, time, os
 from datetime import datetime
 
 global session
@@ -7,14 +7,13 @@ global session
 def AuthSession():
     session = Session()
     session.headers = monster.headers
-    session = monster.Auth(session)
-    variable = {'session_info': monster.get_session_cookies(session)}
-    print(json.dumps(variable))
+    creds = json.loads(open(f'{os.getcwd()}/creds.json', 'rb').read())
+    session = monster.Auth(session, creds)
+    
 
 def StartSession():
     session = Session()
     session.headers = monster.headers
-    #monster.set_session_cookies(session, json.loads(open('creds.json').read())['session_info'])
     return session
 
 def LoopSession():
@@ -22,9 +21,8 @@ def LoopSession():
     while True:
         employees = monster.SearchEmployees(session, offset=offset)['jobResults']
         for item in employees:
-            print(item['jobId'])
+            print(item['jobId'], item['formattedDate'], item['apply']['applyType'], item['status'], item['jobPosting']['title'])
         time.sleep(3)
         offset += len(employees)
 
-session = StartSession()
-LoopSession()
+AuthSession()

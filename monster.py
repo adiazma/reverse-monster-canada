@@ -2,6 +2,7 @@ from requests import Session, Response, Request
 from urllib.parse import urlencode, quote
 from bs4 import BeautifulSoup
 import json, os, requests, mysql.connector, math
+import base64
 
 BASE_URL = 'www.linkedin.com'
 
@@ -17,12 +18,12 @@ headers = {
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
     'Accept-Encoding': 'gzip, deflate, br',
     'Accept-Language': 'es-419,es;q=0.9',
-    'Origin': f'https://{BASE_URL}',
     'Sec-Fetch-User': '?1',
     'Sec-Fetch-Dest': 'document',
     'Sec-Fetch-Mode': 'navigate',
-    'Sec-Fetch-Site': 'same-origin',
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.159 Safari/537.36'
+    'Sec-Fetch-Site': 'none',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.159 Safari/537.36',
+    'upgrade-insecure-requests': '1'
 }
 
 # Functions
@@ -50,7 +51,8 @@ def get_session_cookies(session, filters=[]):
 
 # Monster
 def SearchEmployees(_session, offset=10, label='python'):
-    data = {
+    url = f"https://services.monster.io/jobs-svx-service/v2/monster/search-jobs/samsearch/en-ca"
+    request = Request('POST', url=url, headers=headers, data=str.encode(json.dumps({
         'jobQuery': {
             'locations': [{'address': '', 'country': 'ca', 'radius': {'unit': 'km', 'value': '20'}}], 
             'excludeJobs': [], 
@@ -66,21 +68,45 @@ def SearchEmployees(_session, offset=10, label='python'):
             'position': list(range(1, 11)), 
             'placement': {'component': 'JSR_LIST_VIEW', 'appName': 'monster'}
         }
-    }
-    url = f"https://services.monster.io/jobs-svx-service/v2/monster/search-jobs/samsearch/en-ca"
-    request = Request('POST', url=url, headers=headers, data=str.encode(json.dumps(data)))
+    })))
     req = _session.prepare_request(request)
     response = _session.send(req)
 
     return json.loads(response.content)
 
 # LinkedIn
-def Auth(_session):
-    url = f'https://www.monster.ca/'
+def Auth(_session, creds={}):
+    url = f'https://www.monster.com/profile/detail'
     request = Request('GET', url=url, headers=headers)
     req = _session.prepare_request(request)
     response = _session.send(req)
-    
+    item = json.loads(base64.b64decode(response.text.split('window.atob("')[1].split('"')[0]))
+
+    url = f"https://identity.monster.com/usernamepassword/login"
+    request = Request('POST', url=url, data=str.encode(json.dumps({
+        'audience': 'profiles-profile-app-service',
+        'client_id': item['clientID'],
+        'connection': 'Username-Password-Authentication',
+        'password': creds['password'],
+        'redirect_uri': 'https://www.monster.com/profile/auth/callback',
+        'response_type': 'code',
+        'scope': item['internalOptions']['scope'],
+        'state':item['internalOptions']['state'],
+        'tenant': 'monster-candidate-prod',
+        'username': creds['username'],
+        '_csrf': item['internalOptions']['_csrf'],
+        '_intstate': item['internalOptions']['_intstate'],
+    })), headers={
+         **headers,
+         'content-type': 'application/json',
+         'origin': 'https://identity.monster.com',
+         'referer': response.url
+    })
+    req = _session.prepare_request(request)
+    response = _session.send(req)
+
+    print(response.text)
+
     return _session
 
 # SQL
