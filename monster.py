@@ -105,9 +105,34 @@ def Auth(_session, creds={}):
     req = _session.prepare_request(request)
     response = _session.send(req)
 
-    print(response.text)
+    soup = BeautifulSoup(response.text, 'html.parser')
+    request = Request('POST', url=soup.find('form', {'name': 'hiddenform'}).get('action'), data={
+        'wa': soup.find('input', {'name': 'wa'}).get('value'),
+        'wresult': soup.find('input', {'name': 'wresult'}).get('value'),
+        'wctx': soup.find('input', {'name': 'wctx'}).get('value'),
+    }, headers={
+        **headers,
+        'content-type': 'application/x-www-form-urlencoded',
+        'referer': response.url
+    })
+    req = _session.prepare_request(request)
+    response = _session.send(req)
 
     return _session
+
+def ApplyJob(_session, jobid):
+    url = 'https://www.monster.com/apply/continue'
+    request = Request('POST', url=url, data={
+        'jobId': jobid,
+        'svxRedirectUri': f'/jobs/search?appliedJobId={jobid}',
+        'result': 'ep',
+        'resumeType': 'document',
+    }, headers={
+        **headers,
+        'content-type': 'application/x-www-form-urlencoded',
+    })
+    req = _session.prepare_request(request)
+    response = _session.send(req)
 
 # SQL
 def DiccionarioSQL(Select):
