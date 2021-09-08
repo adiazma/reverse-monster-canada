@@ -74,7 +74,6 @@ def SearchEmployees(_session, offset=10, label='python'):
 
     return json.loads(response.content)
 
-# LinkedIn
 def Auth(_session, creds={}):
     url = f'https://www.monster.com/profile/detail'
     request = Request('GET', url=url, headers=headers)

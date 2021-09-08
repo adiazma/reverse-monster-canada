@@ -11,23 +11,43 @@ def AuthSession():
     session = monster.Auth(session, creds)
     return session
 
-def LoopSession(session):
+def LoopSession(session, label='python'):
     offset = 0
     while True:
-        employees = monster.SearchEmployees(session, offset=offset)['jobResults']
+        try:
+            employees = monster.SearchEmployees(session, offset=offset, label=label)['jobResults']
+        except:
+            break
+        if len(employees) == 0:
+            break
         for item in employees:
-            print(item['apply'])
-            print(item['jobId'], item['formattedDate'], item['jobPosting']['title'])
+            if item['jobId'] in repeat:
+                continue
+            repeat.append(item['jobId'])
             if item['status'] not in ('ACTIVE'):
                 continue
             if item['apply']['applyType'] not in ('ONSITE'):
                 continue
-            monster.ApplyJob(session, item['jobId'])
-            print('-----> Applied!')
+            print(item['jobId'], item['formattedDate'], item['jobPosting']['title'])
+            try:
+                monster.ApplyJob(session, item['jobId'])
+                print('-----> Applied!')
+            except:
+                print('-----> Error!')
+                
             time.sleep(1)
         
         offset += len(employees)
         time.sleep(3)
 
-session = AuthSession()
-LoopSession(session)
+session, repeat = AuthSession(), []
+while True:
+    LoopSession(session, 'startup')
+    LoopSession(session, 'data')
+    LoopSession(session, 'data engineer')
+    LoopSession(session, 'sql')
+    LoopSession(session, 'python')
+    LoopSession(session, 'etl')
+    LoopSession(session, 'web scraping')
+    LoopSession(session, 'data mining')
+    
